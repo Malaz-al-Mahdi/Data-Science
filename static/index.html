@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Symptom Analyzer</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; color: #333; }
+        .container { background: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #eee; }
+        h2 { color: #2c3e50; display: flex; align-items: center; gap: 10px; }
+        p { color: #666; }
+        input[type="text"] { width: 100%; padding: 14px; margin: 15px 0; border: 2px solid #e0e0e0; border-radius: 8px; box-sizing: border-box; font-size: 16px; transition: border-color 0.3s; }
+        input[type="text"]:focus { border-color: #007bff; outline: none; }
+        button { background-color: #007bff; color: white; padding: 14px 20px; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-size: 18px; font-weight: bold; transition: background 0.3s; }
+        button:hover { background-color: #0056b3; }
+        #results { margin-top: 30px; border-top: 2px solid #f0f0f0; padding-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        th, td { border: 1px solid #eee; padding: 15px; text-align: left; }
+        th { background-color: #f8f9fa; color: #2c3e50; font-weight: 600; }
+        tr:nth-child(even) { background-color: #fafafa; }
+        .loading { color: #007bff; font-weight: 500; text-align: center; padding: 20px; }
+        .symptom-tag { background: #e7f3ff; color: #007bff; padding: 4px 10px; border-radius: 15px; font-size: 14px; margin-right: 5px; display: inline-block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>🩺 Symptom Analyzer</h2>
+    <p>Describe your symptoms in natural language (e.g., <i>"I have been feeling dizzy with a mild cough for two days"</i>):</p>
+
+    <input type="text" id="symptomInput" placeholder="Enter symptoms here...">
+    <button onclick="analyze()">Analyze Symptoms</button>
+
+    <div id="results"></div>
+</div>
+
+<script>
+    async function analyze() {
+        const text = document.getElementById('symptomInput').value;
+        const resultsDiv = document.getElementById('results');
+
+        if (!text) {
+            alert("Please enter some symptoms first.");
+            return;
+        }
+
+        resultsDiv.innerHTML = '<p class="loading">🔍 Analyzing using LLM and Neo4j Knowledge Graph...</p>';
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+
+            if (!response.ok) throw new Error('Backend error');
+
+            const data = await response.json();
+
+            let tags = data.matched_mesh_terms.map(t => `<span class="symptom-tag">${t}</span>`).join('');
+
+            let html = `<h3>Analysis Results:</h3>
+                            <p><strong>Identified Terms (MeSH):</strong><br>${tags}</p>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Suggested Disease</th>
+                                        <th>Match Score (TF-IDF)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+
+            if (data.diagnosis_suggestions.length === 0) {
+                html += `<tr><td colspan="2" style="text-align:center">No matching diseases found in the database.</td></tr>`;
+            } else {
+                data.diagnosis_suggestions.forEach(item => {
+                    html += `<tr>
+                                    <td><strong>${item.disease}</strong></td>
+                                    <td>${item.score.toFixed(2)}</td>
+                                 </tr>`;
+                });
+            }
+
+            html += '</tbody></table>';
+            resultsDiv.innerHTML = html;
+        } catch (error) {
+            resultsDiv.innerHTML = '<p style="color:red; text-align:center;"><strong>Error:</strong> Could not connect to the backend server. Make sure main.py is running.</p>';
+        }
+    }
+</script>
+</body>
+</html>
