@@ -25,7 +25,7 @@ driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 class SymptomRequest(BaseModel):
     text: str
 
-# --- 2. Analysis Endpoint ---
+# --- 2. Analysis Endpoint 
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     identified_symptoms = []
