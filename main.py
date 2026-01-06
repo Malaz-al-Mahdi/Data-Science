@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
-# --- 1. Configuration ---
+# configure The Information to connect with a Database
 NEO4J_URI = "neo4j://127.0.0.1:7687"
 NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "Praktikum_DBMS_G6"
@@ -25,13 +25,13 @@ driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 class SymptomRequest(BaseModel):
     text: str
 
-# --- 2. Analysis Endpoint 
+# analyse the Input from the User
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     identified_symptoms = []
 
     try:
-        # Lokaler LLM Aufruf mit Ollama
+        # Local LLM connection for the translation from the User-Input
         response = ollama.chat(model='llama3.2:1b', messages=[
             {
                 'role': 'system',
@@ -43,16 +43,16 @@ async def analyze_symptoms(request: SymptomRequest):
             },
         ])
 
-        # Ergebnis säubern
+        # The result cleanup 
         raw_text = response['message']['content']
         identified_symptoms = [s.strip() for s in raw_text.split(",")]
         print(f"Ollama identified: {identified_symptoms}")
 
     except Exception as e:
         print(f"Ollama Error: {e}")
-        identified_symptoms = ["Headache", "Fever"] # Minimaler Fallback
+        identified_symptoms = ["Headache", "Fever"] # the small feedback
 
-    # --- Neo4j Subgraph Matching ---
+    # Neo-subgraph matching code
     with driver.session() as session:
         result = session.run("""
             MATCH (d:Disease)-[r:HAS_SYMPTOM]->(s:Symptom)
